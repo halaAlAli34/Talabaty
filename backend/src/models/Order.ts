@@ -8,6 +8,7 @@ export interface IOrderItem {
   title: string;
   price: number;
   quantity: number;
+  imageUrl?: string;
 }
 
 export interface IOrder extends Document {
@@ -17,6 +18,7 @@ export interface IOrder extends Document {
   totalAmount: number;
   paymentMethod: PaymentMethod;
   orderStatus: OrderStatus;
+  deliveryAddress?: string;
   createdAt: Date;
 }
 
@@ -26,6 +28,7 @@ const orderItemSchema = new Schema<IOrderItem>(
     title: { type: String, required: true },
     price: { type: Number, required: true },
     quantity: { type: Number, required: true, min: 1 },
+    imageUrl: { type: String },
   },
   { _id: false }
 );
@@ -37,6 +40,7 @@ const orderSchema = new Schema<IOrder>(
     items: { type: [orderItemSchema], required: true },
     totalAmount: { type: Number, required: true },
     paymentMethod: { type: String, enum: ["COD", "Whish Money"], required: true },
+    deliveryAddress: { type: String },
     orderStatus: {
       type: String,
       enum: ["pending", "accepted", "completed", "cancelled"],

@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { Role } from "../models/User";
+import { AuthRequest } from "../types/authRequest";
 
 interface JwtPayload {
   id: string;
@@ -9,7 +10,7 @@ interface JwtPayload {
 
 // Verifies the JWT sent in the Authorization header and attaches
 // { id, role } to req.user. Every protected route runs this first.
-export const protect = (req: Request, res: Response, next: NextFunction) => {
+export const protect = (req: AuthRequest, res: Response, next: NextFunction) => {
   const header = req.headers.authorization;
 
   if (!header || !header.startsWith("Bearer ")) {

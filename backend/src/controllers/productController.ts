@@ -1,253 +1,65 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
+import { AuthRequest } from "../types/authRequest";
 import Product from "../models/Product";
+import PartnerProfile from "../models/PartnerProfile";
 
-
-// ===============================
-// CREATE PRODUCT
-// ===============================
-
-export const createProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-
-  try {
-
-    const product = await Product.create(req.body);
-
-
-    res.status(201).json({
-
-      success: true,
-
-      message: "Product created successfully",
-
-      data: product,
-
-    });
-
-
-  } catch (error) {
-
-    next(error);
-
-  }
-
+// GET /api/products — public catalog browsing
+export const listProducts = async (req: Request, res: Response) => {
+  const { category } = req.query;
+  const filter: Record<string, unknown> = { isActive: true };
+  if (category) filter.category = category;
+  const products = await Product.find(filter).limit(50);
+  res.json(products);
 };
 
-
-
-// ===============================
-// GET ALL PRODUCTS
-// ===============================
-
-export const getProducts = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-
-  try {
-
-
-    const products = await Product.find()
-      .populate("categoryId")
-      .sort({
-        createdAt: -1,
-      });
-
-
-
-    res.status(200).json({
-
-      success: true,
-
-      message: "Products fetched successfully",
-
-      data: products,
-
-    });
-
-
-
-  } catch(error){
-
-    next(error);
-
+// POST /api/products — partner creates a product listing
+export const createProduct = async (req: AuthRequest, res: Response) => {
+  const profile = await PartnerProfile.findOne({ userId: req.user!.id });
+  if (!profile) {
+    return res.status(400).json({ message: "Complete your partner profile first" });
   }
 
+  const { title, description, price, imageUrl, category } = req.body;
+  const product = await Product.create({
+    partnerId: profile._id,
+    title,
+    description,
+    price,
+    imageUrl,
+    category,
+  });
+
+  res.status(201).json(product);
 };
 
-
-
-// ===============================
-// GET SINGLE PRODUCT
-// ===============================
-
-export const getProductById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-
-  try {
-
-
-    const product = await Product.findById(
-      req.params.id
-    )
-    .populate("categoryId");
-
-
-
-    if(!product){
-
-      return res.status(404).json({
-
-        success:false,
-
-        message:"Product not found",
-
-      });
-
-    }
-
-
-
-    res.status(200).json({
-
-      success:true,
-
-      data:product,
-
-    });
-
-
-
-  }catch(error){
-
-    next(error);
-
-  }
-
+// GET /api/products/mine — partner's own products (any status, not just active)
+export const listMyProducts = async (req: AuthRequest, res: Response) => {
+  const profile = await PartnerProfile.findOne({ userId: req.user!.id });
+  if (!profile) return res.json([]);
+  const products = await Product.find({ partnerId: profile._id }).sort({ createdAt: -1 });
+  res.json(products);
 };
 
-
-
-// ===============================
-// UPDATE PRODUCT
-// ===============================
-
-export const updateProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-)=>{
-
-
-  try{
-
-
-    const product = await Product.findByIdAndUpdate(
-
-      req.params.id,
-
-      req.body,
-
-      {
-        new:true,
-        runValidators:true,
-      }
-
-    );
-
-
-
-    if(!product){
-
-      return res.status(404).json({
-
-        success:false,
-
-        message:"Product not found",
-
-      });
-
-    }
-
-
-
-    res.status(200).json({
-
-      success:true,
-
-      message:"Product updated successfully",
-
-      data:product,
-
-    });
-
-
-
-  }catch(error){
-
-    next(error);
-
+// DELETE /api/products/:id — partner deletes their own product only
+export const deleteProduct = async (req: AuthRequest, res: Response) => {
+  const profile = await PartnerProfile.findOne({ userId: req.user!.id });
+  const product = await Product.findOneAndDelete({ _id: req.params.id, partnerId: profile?._id });
+  if (!product) {
+    return res.status(404).json({ message: "Product not found or not owned by you" });
   }
-
+  res.json({ message: "Product deleted" });
 };
 
+// PATCH /api/products/:id — partner updates their own product only
+export const updateProduct = async (req: AuthRequest, res: Response) => {
+  const profile = await PartnerProfile.findOne({ userId: req.user!.id });
+  const product = await Product.findOne({ _id: req.params.id, partnerId: profile?._id });
 
-
-// ===============================
-// DELETE PRODUCT
-// ===============================
-
-export const deleteProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-)=>{
-
-
-  try{
-
-
-    const product = await Product.findByIdAndDelete(
-      req.params.id
-    );
-
-
-
-    if(!product){
-
-      return res.status(404).json({
-
-        success:false,
-
-        message:"Product not found",
-
-      });
-
-    }
-
-
-
-    res.status(200).json({
-
-      success:true,
-
-      message:"Product deleted successfully",
-
-    });
-
-
-
-  }catch(error){
-
-    next(error);
-
+  if (!product) {
+    return res.status(404).json({ message: "Product not found or not owned by you" });
   }
 
+  Object.assign(product, req.body);
+  await product.save();
+  res.json(product);
 };

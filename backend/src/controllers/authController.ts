@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import User from "../models/User";
 import { generateToken } from "../utils/generateToken";
+import { AuthRequest } from "../types/authRequest";
 
 // POST /api/auth/register
 export const register = async (req: Request, res: Response) => {
@@ -59,4 +60,69 @@ export const login = async (req: Request, res: Response) => {
     status: user.status,
     token: generateToken(user._id.toString(), user.role),
   });
+};
+
+// GET /api/auth/me — used by the Profile and Settings pages to load the
+// logged-in user's own record (the JWT only carries id + role, not name/phone).
+export const getMe = async (req: AuthRequest, res: Response) => {
+  const user = await User.findById(req.user!.id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  res.json({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    phone: user.phone,
+    town: user.town,
+    preferredPaymentMethod: user.preferredPaymentMethod,
+    whishNumber: user.whishNumber,
+  });
+};
+
+// PATCH /api/auth/me — Profile page "Save changes", also used by the
+// Payment Methods page to save the preferred payment method + Whish number.
+export const updateMe = async (req: AuthRequest, res: Response) => {
+  const { name, phone, town, preferredPaymentMethod, whishNumber } = req.body;
+
+  const user = await User.findById(req.user!.id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  if (name !== undefined) user.name = name;
+  if (phone !== undefined) user.phone = phone;
+  if (town !== undefined) user.town = town;
+  if (preferredPaymentMethod !== undefined) user.preferredPaymentMethod = preferredPaymentMethod;
+  if (whishNumber !== undefined) user.whishNumber = whishNumber;
+  await user.save();
+
+  res.json({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    phone: user.phone,
+    town: user.town,
+    preferredPaymentMethod: user.preferredPaymentMethod,
+    whishNumber: user.whishNumber,
+  });
+};
+
+// PATCH /api/auth/change-password — Settings page "Change password"
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user!.id).select("+password");
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  const matches = await user.comparePassword(currentPassword);
+  if (!matches) {
+    return res.status(401).json({ message: "Current password is incorrect" });
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({ message: "Password updated" });
 };

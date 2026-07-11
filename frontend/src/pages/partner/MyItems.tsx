@@ -27,6 +27,7 @@ const initialForm: ProductFormData = {
 };
 
 const MyItems = () => {
+  console.log("🔥 MyItems component loaded");
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState<ProductFormData>(initialForm);
 

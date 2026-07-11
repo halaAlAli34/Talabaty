@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import Product from "../models/Product";
-
+import "../models/Category";
 
 // ===============================
 // CREATE PRODUCT
@@ -43,6 +43,7 @@ export const createProduct = async (
 // ===============================
 
 export const getProducts = async (
+  
   req: Request,
   res: Response,
   next: NextFunction
@@ -58,7 +59,7 @@ export const getProducts = async (
       });
 
 
-
+console.log(Product.collection.name);
     res.status(200).json({
 
       success: true,

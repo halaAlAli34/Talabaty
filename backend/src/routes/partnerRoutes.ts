@@ -1,12 +1,12 @@
 import { Router } from "express";
+import { getMyPartnerProfile } from "../controllers/partner.controller";
+// Swap this for your actual auth middleware — the one that reads the
+// httpOnly JWT cookie and attaches req.user. Likely already exists
+// somewhere in your project (e.g. authMiddleware.ts / protect.ts).
 import { protect } from "../middleware/authMiddleware";
-import { authorize } from "../middleware/roleMiddleware";
-import { createMyProfile, getMyProfile, listPartners } from "../controllers/partnerController";
 
 const router = Router();
 
-router.get("/", listPartners);
-router.post("/me", protect, authorize("partner"), createMyProfile);
-router.get("/me", protect, authorize("partner"), getMyProfile);
+router.get("/me", protect, getMyPartnerProfile);
 
 export default router;

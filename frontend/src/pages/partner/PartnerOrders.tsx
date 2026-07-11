@@ -1,260 +1,594 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FiSearch,
   FiPackage,
   FiClock,
   FiCheckCircle,
-  FiXCircle,
+  FiAlertTriangle,
 } from "react-icons/fi";
 
-type Status = "Pending" | "Preparing" | "Delivered" | "Cancelled";
+import {
+  getOrders,
+  updateOrderStatus,
+} from "../../api/Ordersapi";
 
-type Order = {
-  id: number;
-  orderId: string;
-  customer: string;
-  items: string;
-  total: number;
-  status: Status;
-  time: string;
+import type {
+  Order,
+  OrderStatus,
+} from "../../types/order";
+
+
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: "Pending",
+  preparing: "Preparing",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
 };
 
-const PartnerOrders = () => {
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: 1,
-      orderId: "#1001",
-      customer: "Ahmad Ali",
-      items: "Burger, Fries",
-      total: 12,
-      status: "Pending",
-      time: "2 min ago",
-    },
-    {
-      id: 2,
-      orderId: "#1002",
-      customer: "Sarah Hassan",
-      items: "Pizza, Cola",
-      total: 18,
-      status: "Preparing",
-      time: "10 min ago",
-    },
-    {
-      id: 3,
-      orderId: "#1003",
-      customer: "Mohammad Karim",
-      items: "Shawarma",
-      total: 8,
-      status: "Delivered",
-      time: "30 min ago",
-    },
-  ]);
+
+const STATUS_CLASSES: Record<OrderStatus, string> = {
+  pending: "status-pending",
+  preparing: "status-preparing",
+  delivered: "status-delivered",
+  cancelled: "status-cancelled",
+};
+
+
+const Orders = () => {
+
+  const [orders, setOrders] = useState<Order[]>([]);
 
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
 
-  /* =========================
-     ACTIONS
-  ========================= */
+  const [loading, setLoading] = useState(true);
 
-  const acceptOrder = (id: number) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id ? { ...o, status: "Preparing" } : o
-      )
-    );
-  };
+  const [error, setError] = useState<string | null>(null);
 
-  const rejectOrder = (id: number) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id ? { ...o, status: "Cancelled" } : o
-      )
-    );
-  };
+  const [pendingActionId, setPendingActionId] =
+    useState<string | null>(null);
 
-  const markDelivered = (id: number) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id ? { ...o, status: "Delivered" } : o
-      )
-    );
-  };
 
-  /* =========================
-     FILTERING
-  ========================= */
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      const matchSearch =
-        o.customer.toLowerCase().includes(search.toLowerCase()) ||
-        o.orderId.includes(search);
+  const fetchOrders = async () => {
 
-      const matchFilter = filter === "All" || o.status === filter;
+    try {
 
-      return matchSearch && matchFilter;
-    });
-  }, [orders, search, filter]);
+      setLoading(true);
+      setError(null);
 
-  /* =========================
-     STATUS STYLE
-  ========================= */
 
-  const getStatusClass = (status: Status) => {
-    switch (status) {
-      case "Delivered":
-        return "status-delivered";
-      case "Pending":
-        return "status-pending";
-      case "Preparing":
-        return "status-preparing";
-      case "Cancelled":
-        return "status-cancelled";
-      default:
-        return "";
+      const response = await getOrders();
+
+
+      setOrders(response.data);
+
+
+    } catch (err) {
+
+      console.error(err);
+
+      setError(
+        "Failed to load orders."
+      );
+
+    } finally {
+
+      setLoading(false);
+
     }
+
   };
+
+
+
+  useEffect(() => {
+
+    fetchOrders();
+
+  }, []);
+
+
+
+
+  const changeStatus = async (
+    orderId: string,
+    status: OrderStatus
+  ) => {
+
+
+    try {
+
+      setPendingActionId(orderId);
+
+
+      const updated =
+        await updateOrderStatus(
+          orderId,
+          status
+        );
+
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? updated
+            : order
+        )
+      );
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      setError(
+        "Failed to update order."
+      );
+
+
+    } finally {
+
+      setPendingActionId(null);
+
+    }
+
+  };
+
+
+
+
+  const filteredOrders =
+    orders.filter((order) =>
+      order._id
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+
+
+
+
+
+  const formatDate = (
+    date: string
+  ) => {
+
+    return new Date(date)
+      .toLocaleString();
+
+  };
+
+
+
+
 
   return (
+
     <div className="orders-page">
 
-      {/* HEADER */}
+
       <div className="page-header">
-        <h2>Orders</h2>
-        <p>Manage incoming customer orders in real time</p>
+
+        <h2>
+          Orders
+        </h2>
+
+        <p>
+          View customer orders
+        </p>
+
       </div>
 
-      {/* STATS */}
+
+
+
+
       <div className="orders-stats">
 
-        <div className="stat">
-          <FiPackage />
-          <div>
-            <h3>{orders.length}</h3>
-            <p>Total Orders</p>
-          </div>
-        </div>
 
         <div className="stat">
+
+          <FiPackage />
+
+          <div>
+
+            <h3>
+              {orders.length}
+            </h3>
+
+            <p>
+              Total Orders
+            </p>
+
+          </div>
+
+        </div>
+
+
+
+
+        <div className="stat">
+
           <FiClock />
+
           <div>
-            <h3>{orders.filter(o => o.status === "Pending").length}</h3>
-            <p>Pending</p>
+
+            <h3>
+              {
+                orders.filter(
+                  o =>
+                  o.orderStatus === "pending"
+                ).length
+              }
+            </h3>
+
+            <p>
+              Pending
+            </p>
+
           </div>
+
         </div>
 
+
+
+
         <div className="stat">
+
           <FiPackage />
+
           <div>
-            <h3>{orders.filter(o => o.status === "Preparing").length}</h3>
-            <p>Preparing</p>
+
+            <h3>
+              {
+                orders.filter(
+                  o =>
+                  o.orderStatus === "preparing"
+                ).length
+              }
+            </h3>
+
+            <p>
+              Preparing
+            </p>
+
           </div>
+
         </div>
 
+
+
+
+
         <div className="stat">
+
           <FiCheckCircle />
+
           <div>
-            <h3>{orders.filter(o => o.status === "Delivered").length}</h3>
-            <p>Delivered</p>
+
+            <h3>
+              {
+                orders.filter(
+                  o =>
+                  o.orderStatus === "delivered"
+                ).length
+              }
+            </h3>
+
+            <p>
+              Delivered
+            </p>
+
           </div>
+
         </div>
+
 
       </div>
 
-      {/* FILTERS */}
+
+
+
+
       <div className="orders-filters">
 
+
         <div className="search-box">
+
           <FiSearch />
+
           <input
-            placeholder="Search order or customer..."
+
+            placeholder="Search order id..."
+
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+
+            onChange={(e)=>
+              setSearch(e.target.value)
+            }
+
           />
+
         </div>
 
-        <select onChange={(e) => setFilter(e.target.value)}>
-          <option>All</option>
-          <option>Pending</option>
-          <option>Preparing</option>
-          <option>Delivered</option>
-          <option>Cancelled</option>
-        </select>
 
       </div>
 
-      {/* ORDERS */}
-      <div className="orders-list">
 
-        {filteredOrders.map((order) => (
-          <div className="order-card" key={order.id}>
 
-            <div className="order-top">
-              <h4>{order.orderId}</h4>
-              <span className={getStatusClass(order.status)}>
-                {order.status}
-              </span>
-            </div>
 
-            <div className="order-body">
-              <p><b>Customer:</b> {order.customer}</p>
-              <p><b>Items:</b> {order.items}</p>
-              <p><b>Total:</b> ${order.total}</p>
-              <p className="time">{order.time}</p>
-            </div>
 
-            {/* ACTIONS */}
-            <div className="order-actions">
+      {error && (
 
-              {order.status === "Pending" && (
-                <>
-                  <button
-                    className="update"
-                    onClick={() => acceptOrder(order.id)}
+        <div className="orders-error">
+
+          <FiAlertTriangle />
+
+          <span>
+            {error}
+          </span>
+
+
+          <button
+            onClick={fetchOrders}
+          >
+            Retry
+          </button>
+
+
+        </div>
+
+      )}
+
+
+
+
+
+
+
+      {loading ? (
+
+        <div className="orders-loading">
+
+          Loading orders...
+
+        </div>
+
+
+      ) : filteredOrders.length === 0 ? (
+
+        <div className="orders-empty">
+
+          No orders found.
+
+        </div>
+
+
+      ) : (
+
+
+        <div className="orders-list">
+
+
+          {
+            filteredOrders.map(
+              (order)=>{
+
+
+                const busy =
+                  pendingActionId === order._id;
+
+
+
+                return (
+
+                  <div
+                    className="order-card"
+                    key={order._id}
                   >
-                    Accept
-                  </button>
 
-                  <button
-                    className="delete"
-                    onClick={() => rejectOrder(order.id)}
-                  >
-                    Reject
-                  </button>
-                </>
-              )}
 
-              {order.status === "Preparing" && (
-                <button
-                  className="view"
-                  onClick={() => markDelivered(order.id)}
-                >
-                  Mark Delivered
-                </button>
-              )}
+                    <div className="order-top">
 
-              {order.status === "Delivered" && (
-                <button disabled className="view">
-                  Completed
-                </button>
-              )}
 
-              {order.status === "Cancelled" && (
-                <button disabled className="delete">
-                  Cancelled
-                </button>
-              )}
+                      <h4>
+                        #
+                        {
+                          order._id
+                            .slice(-6)
+                            .toUpperCase()
+                        }
+                      </h4>
 
-            </div>
 
-          </div>
-        ))}
 
-      </div>
+                      <span
+                        className={
+                          STATUS_CLASSES[
+                            order.orderStatus
+                          ]
+                        }
+                      >
+
+                        {
+                          STATUS_LABELS[
+                            order.orderStatus
+                          ]
+                        }
+
+                      </span>
+
+
+                    </div>
+
+
+
+
+
+                    <div className="order-body">
+
+
+                      <p>
+                        <b>
+                          Customer ID:
+                        </b>
+
+                        {" "}
+                        {
+                          order.customerId
+                        }
+
+                      </p>
+
+
+
+
+                      <p>
+
+                        <b>
+                          Items:
+                        </b>
+
+
+                        {
+                          order.items
+                            .map(
+                              item =>
+                              `${item.title} x${item.quantity}`
+                            )
+                            .join(", ")
+                        }
+
+                      </p>
+
+
+
+
+                      <p>
+
+                        <b>
+                          Total:
+                        </b>
+
+                        $
+                        {
+                          order.totalAmount
+                        }
+
+                      </p>
+
+
+
+
+                      <p>
+
+                        <b>
+                          Date:
+                        </b>
+
+                        {
+                          formatDate(
+                            order.createdAt
+                          )
+                        }
+
+                      </p>
+
+
+
+                    </div>
+
+
+
+
+
+                    <div className="order-actions">
+
+
+                      {
+                        order.orderStatus === "pending" && (
+
+                          <button
+
+                            disabled={busy}
+
+                            className="update"
+
+                            onClick={() =>
+                              changeStatus(
+                                order._id,
+                                "preparing"
+                              )
+                            }
+
+                          >
+
+                            Accept
+
+                          </button>
+
+                        )
+                      }
+
+
+
+
+
+                      {
+                        order.orderStatus === "preparing" && (
+
+                          <button
+
+                            disabled={busy}
+
+                            className="view"
+
+                            onClick={() =>
+                              changeStatus(
+                                order._id,
+                                "delivered"
+                              )
+                            }
+
+                          >
+
+                            Mark Delivered
+
+                          </button>
+
+
+                        )
+                      }
+
+
+
+
+
+                    </div>
+
+
+
+                  </div>
+
+
+                );
+
+              }
+
+            )
+          }
+
+
+        </div>
+
+
+      )}
+
 
     </div>
+
   );
+
 };
 
-export default PartnerOrders;
+
+export default Orders;

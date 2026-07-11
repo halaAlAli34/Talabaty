@@ -1,24 +1,33 @@
 import axios from "axios";
 
 
+// ==========================
+// AXIOS INSTANCE
+// ==========================
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000/api";
+
+
+console.log(
+  "🚀 Axios Base URL:",
+  API_URL
+);
+
+
 
 const axiosInstance = axios.create({
 
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    "http://localhost:5000/api",
-
+  baseURL: API_URL,
 
   headers: {
-
     "Content-Type": "application/json",
-
   },
 
+  withCredentials: true,
 
 });
-
-
 
 
 
@@ -30,18 +39,15 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
 
-  (config)=>{
+  (config) => {
 
-
-    // Future login integration
-    // Get token from localStorage
 
     const token =
       localStorage.getItem("token");
 
 
 
-    if(token){
+    if (token) {
 
       config.headers.Authorization =
         `Bearer ${token}`;
@@ -50,23 +56,26 @@ axiosInstance.interceptors.request.use(
 
 
 
-    return config;
+    console.log(
+      "➡️ Request:",
+      config.method?.toUpperCase(),
+      `${config.baseURL}${config.url}`
+    );
 
+
+
+    return config;
 
   },
 
 
-  (error)=>{
-
+  (error) => {
 
     return Promise.reject(error);
-
 
   }
 
 );
-
-
 
 
 
@@ -81,7 +90,14 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
 
 
-  (response)=>{
+  (response) => {
+
+
+    console.log(
+      "✅ Response:",
+      response.status,
+      response.config.url
+    );
 
 
     return response;
@@ -91,26 +107,32 @@ axiosInstance.interceptors.response.use(
 
 
 
-  (error)=>{
+  (error) => {
 
 
-    if(error.response){
+    if (error.response) {
 
 
       console.error(
-        "API ERROR:",
+        "❌ API ERROR:",
+        error.response.status,
         error.response.data
       );
 
 
-    }else{
+    } else {
 
 
       console.error(
-        "NETWORK ERROR:",
+        "❌ NETWORK ERROR:",
         error.message
       );
 
+
+      console.error(
+        "Check backend:",
+        API_URL
+      );
 
     }
 
@@ -121,9 +143,7 @@ axiosInstance.interceptors.response.use(
 
   }
 
-
 );
-
 
 
 

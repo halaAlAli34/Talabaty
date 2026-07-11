@@ -1,15 +1,40 @@
 import { Request, Response, NextFunction } from "express";
 
-export const errorHandler = (
-  error: any,
+// ========================================
+// 404 Middleware
+// ========================================
+
+export const notFound = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  console.error(error);
+  res.status(404);
 
-  res.status(error.status || 500).json({
+  next(new Error(`Route Not Found - ${req.originalUrl}`));
+};
+
+// ========================================
+// Global Error Handler
+// ========================================
+
+export const errorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const statusCode =
+    res.statusCode === 200
+      ? 500
+      : res.statusCode;
+
+  res.status(statusCode).json({
     success: false,
-    message: error.message || "Internal Server Error",
+    message: err.message || "Server Error",
+    stack:
+      process.env.NODE_ENV === "production"
+        ? null
+        : err.stack,
   });
 };

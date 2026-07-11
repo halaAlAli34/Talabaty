@@ -1,173 +1,49 @@
-import express from "express";
 import dotenv from "dotenv";
-import cors from "cors";
-import http from "http";
-import mongoose from "mongoose";
 
-import connectDB from "./config/db";
-import productRoutes from "./routes/productRoutes";
-import { errorHandler } from "./middleware/errorHandler";
-
-
-// Load environment variables
+// Load .env FIRST
 dotenv.config();
 
 
-// Validate environment variables
-const requiredEnv = [
-    "MONGO_URI",
-    "PORT",
-    "CLIENT_URL"
-];
+import http from "http";
+import mongoose from "mongoose";
 
+import app from "./app";
+import connectDB from "./config/db";
 
-requiredEnv.forEach((variable) => {
 
-    if (!process.env[variable]) {
+const PORT = Number(process.env.PORT) || 5000;
 
-        console.error(
-            `❌ Missing environment variable: ${variable}`
-        );
 
-        process.exit(1);
+const startServer = async () => {
 
-    }
+    try {
 
-});
+        await connectDB();
 
 
-console.log(
-    "✅ Environment configuration validated"
-);
+        const server = http.createServer(app);
 
 
-
-const app = express();
-
-
-const PORT =
-    Number(process.env.PORT) || 5000;
-
-
-
-
-
-// =========================
-// MIDDLEWARES
-// =========================
-
-
-// CORS
-
-app.use(
-    cors({
-
-        origin:
-            process.env.CLIENT_URL,
-
-        credentials: true
-
-    })
-);
-
-
-
-
-// JSON BODY
-
-app.use(
-    express.json()
-);
-
-
-
-
-
-
-// =========================
-// ROUTES
-// =========================
-
-
-app.use(
-    "/api/products",
-    productRoutes
-);
-
-
-
-
-
-
-// =========================
-// ERROR HANDLER
-// MUST BE LAST
-// =========================
-
-app.use(
-    errorHandler
-);
-
-
-
-
-
-
-
-
-// =========================
-// START SERVER
-// =========================
-
-const startServer = async (): Promise<void> => {
-
-
-    await connectDB();
-
-
-
-
-    const server =
-        http.createServer(app);
-
-
-
-
-    server.listen(
-        PORT,
-        () => {
+        server.listen(PORT, () => {
 
             console.log(
                 `🚀 Server running on port ${PORT}`
             );
 
-        }
-    );
+        });
 
 
-
-
-
-
-    // Server errors
-
-    server.on(
-        "error",
-        (error: any) => {
-
+        server.on("error", (error: any) => {
 
             if (error.code === "EADDRINUSE") {
-
 
                 console.error(
                     `❌ Port ${PORT} is already in use`
                 );
 
-
                 process.exit(1);
 
             }
-
 
 
             console.error(
@@ -175,58 +51,39 @@ const startServer = async (): Promise<void> => {
                 error
             );
 
-
-        }
-    );
+        });
 
 
 
-
-
-
-
-
-    // Graceful shutdown
-
-    const shutdown =
-        async (): Promise<void> => {
-
+        const shutdown = async () => {
 
             console.log(
-                "\n🛑 Shutting down server..."
+                "🛑 Shutting down server..."
             );
-
 
 
             try {
 
-
                 await mongoose.connection.close();
 
 
+                server.close(() => {
 
-                server.close(
-                    () => {
-
-
-                        console.log(
-                            "✅ Server closed successfully"
-                        );
+                    console.log(
+                        "✅ Server closed"
+                    );
 
 
-                        process.exit(0);
+                    process.exit(0);
+
+                });
 
 
-                    }
-                );
-
-
-
-            } catch (error) {
+            } catch(error) {
 
 
                 console.error(
-                    "❌ Shutdown error:",
+                    "❌ Shutdown error",
                     error
                 );
 
@@ -235,34 +92,38 @@ const startServer = async (): Promise<void> => {
 
             }
 
-
         };
 
 
 
+        process.on(
+            "SIGINT",
+            shutdown
+        );
+
+
+        process.on(
+            "SIGTERM",
+            shutdown
+        );
 
 
 
-
-    process.on(
-        "SIGINT",
-        shutdown
-    );
+    } catch(error) {
 
 
-    process.on(
-        "SIGTERM",
-        shutdown
-    );
+        console.error(
+            "❌ Server startup failed",
+            error
+        );
 
+
+        process.exit(1);
+
+    }
 
 };
 
 
-
-
-
-
-// Start application
 
 startServer();

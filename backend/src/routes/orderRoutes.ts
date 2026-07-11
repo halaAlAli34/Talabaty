@@ -1,12 +1,42 @@
 import { Router } from "express";
-import { protect } from "../middleware/authMiddleware";
-import { authorize } from "../middleware/roleMiddleware";
-import { createOrder, getMyOrders, getPartnerOrders } from "../controllers/orderController";
+
+
+import {
+  getOrders,
+  getOrderById,
+  updateOrderStatus,
+} from "../controllers/orderController";
+
 
 const router = Router();
 
-router.post("/", protect, authorize("customer"), createOrder);
-router.get("/mine", protect, authorize("customer"), getMyOrders);
-router.get("/partner-mine", protect, authorize("partner"), getPartnerOrders);
+
+
+// GET ALL ORDERS
+// /api/orders
+router.get(
+  "/",
+  getOrders
+);
+
+
+
+// GET ONE ORDER
+// /api/orders/:orderId
+router.get(
+  "/:orderId",
+  getOrderById
+);
+
+
+
+// UPDATE STATUS
+// /api/orders/:orderId/status
+router.patch(
+  "/:orderId/status",
+  updateOrderStatus
+);
+
+
 
 export default router;

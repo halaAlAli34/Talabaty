@@ -1,29 +1,58 @@
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { Role } from "../models/User";
+import { Response, NextFunction } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import { AuthRequest } from "../types/auth";
 
-interface JwtPayload {
-  id: string;
-  role: Role;
-}
+const COOKIE_NAME = "token";
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
-// Verifies the JWT sent in the Authorization header and attaches
-// { id, role } to req.user. Every protected route runs this first.
-export const protect = (req: Request, res: Response, next: NextFunction) => {
-  const header = req.headers.authorization;
-
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Not authenticated, no token provided" });
-  }
-
-  const token = header.split(" ")[1];
-
+export const protect = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const secret = process.env.JWT_SECRET as string;
-    const decoded = jwt.verify(token, secret) as JwtPayload;
-    req.user = { id: decoded.id, role: decoded.role };
+    const token = req.cookies?.[COOKIE_NAME];
+
+    if (!token) {
+      return res.status(401).json({
+        message: "Not authenticated.",
+      });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+
+    req.user = {
+      id: decoded.id as string,
+      role: decoded.role as string,
+    };
+
     next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+
+  } catch (err) {
+    console.error("Auth middleware error:", err);
+
+    return res.status(401).json({
+      message: "Invalid or expired session.",
+    });
   }
 };
+
+
+export const requireRole =
+  (...allowedRoles: string[]) =>
+  (req: AuthRequest, res: Response, next: NextFunction) => {
+
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Not authenticated.",
+      });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: "Not authorized for this action.",
+      });
+    }
+
+    next();
+  };

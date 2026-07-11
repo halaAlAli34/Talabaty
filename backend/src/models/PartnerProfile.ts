@@ -1,24 +1,33 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 
 export interface IPartnerProfile extends Document {
-  userId: Types.ObjectId;
+  userId: Types.ObjectId; // FK -> users._id (the login account for this store)
   storeName: string;
   description?: string;
-  address: string;
-  phoneNumber: string;
+  address?: string;
+  phoneNumber?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const partnerProfileSchema = new Schema<IPartnerProfile>(
+const PartnerProfileSchema = new Schema<IPartnerProfile>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
-    storeName: { type: String, required: true },
-    description: { type: String },
-    address: { type: String, required: true },
-    phoneNumber: { type: String, required: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true, // one profile per login account
+      index: true,
+    },
+    storeName: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
+    address: { type: String, trim: true },
+    phoneNumber: { type: String, trim: true },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: "partnerprofiles", // matches the collection name shown in Compass
+  }
 );
 
-export default mongoose.model<IPartnerProfile>("PartnerProfile", partnerProfileSchema);
+export default model<IPartnerProfile>("PartnerProfile", PartnerProfileSchema);

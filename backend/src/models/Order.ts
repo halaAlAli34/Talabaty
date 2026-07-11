@@ -1,49 +1,144 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 
-export type PaymentMethod = "COD" | "Whish Money";
-export type OrderStatus = "pending" | "accepted" | "completed" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "preparing"
+  | "delivered"
+  | "cancelled";
+
+export type PaymentMethod = "COD" | "Card" | "Online";
 
 export interface IOrderItem {
   productId: Types.ObjectId;
   title: string;
   price: number;
   quantity: number;
+  imageUrl?: string;
 }
 
 export interface IOrder extends Document {
   customerId: Types.ObjectId;
   partnerId: Types.ObjectId;
+
   items: IOrderItem[];
+
   totalAmount: number;
+
   paymentMethod: PaymentMethod;
+
+  deliveryAddress: string;
+
   orderStatus: OrderStatus;
-  createdAt: Date;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-const orderItemSchema = new Schema<IOrderItem>(
+const OrderItemSchema = new Schema<IOrderItem>(
   {
-    productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-    title: { type: String, required: true },
-    price: { type: Number, required: true },
-    quantity: { type: Number, required: true, min: 1 },
+    productId: {
+      type: Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
+    },
+
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+
+    imageUrl: {
+      type: String,
+      trim: true,
+    },
   },
   { _id: false }
 );
 
-const orderSchema = new Schema<IOrder>(
+
+const OrderSchema = new Schema<IOrder>(
   {
-    customerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    partnerId: { type: Schema.Types.ObjectId, ref: "PartnerProfile", required: true },
-    items: { type: [orderItemSchema], required: true },
-    totalAmount: { type: Number, required: true },
-    paymentMethod: { type: String, enum: ["COD", "Whish Money"], required: true },
+    customerId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    partnerId: {
+      type: Schema.Types.ObjectId,
+      ref: "PartnerProfile",
+      required: true,
+      index: true,
+    },
+
+    items: {
+      type: [OrderItemSchema],
+      required: true,
+      validate: {
+        validator: (v: IOrderItem[]) =>
+          Array.isArray(v) && v.length > 0,
+
+        message: "Order must contain at least one item.",
+      },
+    },
+
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    paymentMethod: {
+      type: String,
+      enum: ["COD", "Card", "Online"],
+      default: "COD",
+    },
+
+    deliveryAddress: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     orderStatus: {
       type: String,
-      enum: ["pending", "accepted", "completed", "cancelled"],
+      enum: [
+        "pending",
+        "preparing",
+        "delivered",
+        "cancelled",
+      ],
       default: "pending",
+      index: true,
     },
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+
+  {
+    timestamps: true,
+    collection: "orders",
+  }
 );
 
-export default mongoose.model<IOrder>("Order", orderSchema);
+
+OrderSchema.index({
+  partnerId: 1,
+  orderStatus: 1,
+  createdAt: -1,
+});
+
+
+export default model<IOrder>("Order", OrderSchema);

@@ -1,28 +1,103 @@
 import express from "express";
 import cors from "cors";
-import authRoutes from "./routes/authRoutes";
-import partnerRoutes from "./routes/partnerRoutes";
-import productRoutes from "./routes/productRoutes";
-import cartRoutes from "./routes/cartRoutes";
+import cookieParser from "cookie-parser";
+
 import orderRoutes from "./routes/orderRoutes";
-import adminRoutes from "./routes/adminRoutes";
-import { notFound, errorHandler } from "./middleware/errorHandler";
+import productRoutes from "./routes/productRoutes";
+import partnerRoutes from "./routes/partnerRoutes";
+
+import {
+  notFound,
+  errorHandler,
+} from "./middleware/errorHandler";
+
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+
+// ===========================
+// Middleware
+// ===========================
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+  })
+);
+
+
 app.use(express.json());
 
-app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+app.use(cookieParser());
 
-app.use("/api/auth", authRoutes);
-app.use("/api/partners", partnerRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/cart", cartRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/admin", adminRoutes);
+
+
+// ===========================
+// Health Check
+// ===========================
+
+app.get("/api/health", (req, res) => {
+
+  res.status(200).json({
+    status: "API is running",
+  });
+
+});
+
+
+
+// ===========================
+// API Routes
+// ===========================
+
+// Products API
+app.use(
+  "/api/products",
+  productRoutes
+);
+
+
+// Orders API
+// GET    /api/orders
+// GET    /api/orders/:orderId
+// PATCH  /api/orders/:orderId/status
+app.use(
+  "/api/orders",
+  orderRoutes
+);
+
+
+// Partners API (keep if used elsewhere)
+app.use(
+  "/api/partners",
+  partnerRoutes
+);
+
+
+
+// ===========================
+// Error Handling
+// ===========================
 
 app.use(notFound);
+
 app.use(errorHandler);
+
+
 
 export default app;

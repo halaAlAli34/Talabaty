@@ -6,7 +6,9 @@ import productRoutes from "./routes/productRoutes";
 import cartRoutes from "./routes/cartRoutes";
 import orderRoutes from "./routes/orderRoutes";
 import adminRoutes from "./routes/adminRoutes";
-import { notFound, errorHandler } from "./middleware/errorHandler";
+import addressRoutes from "./routes/addressRoutes";
+import paymentMethodRoutes from "./routes/paymentMethodRoutes";
+import { notFound, errorHandler } from "./middleware/errorMiddleware";
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/payment-methods", paymentMethodRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

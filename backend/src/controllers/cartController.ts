@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../types/authRequest";
 import Cart from "../models/Cart";
+import Product from "../models/Product";
 
 // GET /api/cart
 export const getMyCart = async (req: AuthRequest, res: Response) => {
@@ -14,6 +15,11 @@ export const getMyCart = async (req: AuthRequest, res: Response) => {
 // POST /api/cart/items — add a product, or bump quantity if it's already in the cart
 export const addItem = async (req: AuthRequest, res: Response) => {
   const { productId, quantity } = req.body;
+
+  const product = await Product.findOne({ _id: productId, isActive: true });
+  if (!product) {
+    return res.status(404).json({ message: "Product not found or no longer available" });
+  }
 
   let cart = await Cart.findOne({ customerId: req.user!.id });
   if (!cart) {

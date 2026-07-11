@@ -1,225 +1,72 @@
-import { useState } from "react";
-import logo from "../../assets/T logo.png";
-import { NavLink, Outlet } from "react-router-dom";
-import {
-  FiGrid,
-  FiShoppingBag,
-  FiClipboard,
-  FiBell,
-  FiMenu,
-  FiX,
-  FiLogOut,
-} from "react-icons/fi";
+import { ReactNode } from "react";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
-const DashboardShell = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+interface NavItem {
+  label: string;
+  to: string;
+  icon: string;
+}
 
-  const closeSidebar = () => {
-    setSidebarOpen(false);
-  };
+interface Props {
+  panelLabel: string;
+  subLabel?: string;
+  items: NavItem[];
+  children: ReactNode;
+}
+
+// Shared dark sidebar shell used by both the admin panel and the
+// partner panel — same structure as the ERD's shared `users` table,
+// just two different navigation sets for two different roles.
+export default function DashboardShell({ panelLabel, subLabel, items, children }: Props) {
+  const { user, logout } = useAuth();
 
   return (
-    <div className="dashboard-wrapper">
-
-      {/* Mobile Overlay */}
-
-      <div
-        className={`sidebar-overlay ${
-          sidebarOpen ? "show-overlay" : ""
-        }`}
-        onClick={closeSidebar}
-      ></div>
-
-      {/* Sidebar */}
-
-      <aside
-        className={`partner-sidebar ${
-          sidebarOpen ? "sidebar-open" : ""
-        }`}
-      >
-        {/* Logo */}
-
-        <div className="sidebar-logo">
-
-          <div className="logo-circle">
-            T
-          </div>
-
-          <div>
-
-            <h4>Talabaty</h4>
-
-            <span>Partner Panel</span>
-
-          </div>
-
+    <div className="d-flex min-vh-100">
+      <aside className="d-flex flex-shrink-0 flex-column bg-navy-900 px-3 py-4 text-slate-300" style={{ width: "16rem" }}>
+        <div className="d-flex align-items-center gap-2 px-2 mb-1">
+          <span className="d-flex align-items-center justify-content-center rounded-3 bg-brand-600 text-white" style={{ width: "2rem", height: "2rem" }}>
+            <i className="ti ti-truck-delivery" aria-hidden="true" />
+          </span>
+          <span className="fw-bold text-white">Talabaty</span>
         </div>
+        <p className="px-2 mb-4 small-caps text-slate-500" style={{ fontSize: ".75rem" }}>{panelLabel}</p>
 
-        {/* Navigation */}
-
-        <nav className="sidebar-nav">
-
-          <NavLink
-            to="/partner/dashboard"
-            className={({ isActive }) =>
-              isActive
-                ? "sidebar-link active"
-                : "sidebar-link"
-            }
-            onClick={closeSidebar}
-          >
-            <FiGrid />
-
-            <span>Dashboard</span>
-          </NavLink>
-
-          <NavLink
-            to="/partner/items"
-            className={({ isActive }) =>
-              isActive
-                ? "sidebar-link active"
-                : "sidebar-link"
-            }
-            onClick={closeSidebar}
-          >
-            <FiShoppingBag />
-
-            <span>My Items</span>
-          </NavLink>
-
-          <NavLink
-            to="/partner/orders"
-            className={({ isActive }) =>
-              isActive
-                ? "sidebar-link active"
-                : "sidebar-link"
-            }
-            onClick={closeSidebar}
-          >
-            <FiClipboard />
-
-            <span>Orders</span>
-          </NavLink>
-
-        </nav>
-
-        {/* Footer */}
-
-        <div className="sidebar-footer">
-
-          <div className="restaurant-info">
-
-            <div className="restaurant-avatar">
-              T
-            </div>
-
-            <div>
-
-              <h6 className="mb-0">
-                Talabaty Restaurant
-              </h6>
-
-              <small>Partner Account</small>
-
-            </div>
-
-          </div>
-
-          <button
-            className="btn btn-danger logout-button w-100"
-            type="button"
-          >
-            <FiLogOut className="me-2" />
-
-            Logout
-          </button>
-
-        </div>
-
-      </aside>
-
-      {/* Main */}
-
-      <div className="dashboard-main">
-
-        {/* Header */}
-
-        <header className="dashboard-header">
-
-          <div className="d-flex align-items-center">
-
-            <button
-              className="menu-button"
-              onClick={() =>
-                setSidebarOpen(!sidebarOpen)
+        <nav className="flex-grow-1 d-flex flex-column gap-1">
+          {items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `d-flex align-items-center gap-2 rounded-3 px-3 py-2 text-decoration-none small fw-medium ${
+                  isActive ? "bg-brand-600 text-white" : "text-slate-300 hover-bg-navy-700"
+                }`
               }
             >
-              {sidebarOpen ? (
-                <FiX />
-              ) : (
-                <FiMenu />
-              )}
-            </button>
+              <i className={`ti ${item.icon}`} aria-hidden="true" />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
 
-            <div>
-
-              <h3 className="page-title">
-                Partner Dashboard
-              </h3>
-
-              <p className="page-subtitle">
-                Manage your restaurant, menu and
-                customer orders.
-              </p>
-
+        <div className="mt-auto d-flex flex-column gap-3 border-top border-navy-700 pt-3">
+          {subLabel && (
+            <div className="px-2">
+              <p className="fw-semibold text-white mb-0">{subLabel}</p>
+              <p className="text-slate-500 mb-0 small">{user?.name}</p>
             </div>
+          )}
+          <button
+            onClick={logout}
+            className="btn w-100 d-flex align-items-center gap-2 rounded-3 bg-navy-800 px-3 py-2 text-start small fw-medium text-slate-300 hover-bg-navy-700 border-0"
+          >
+            <i className="ti ti-logout" aria-hidden="true" />
+            Log out
+          </button>
+        </div>
+      </aside>
 
-          </div>
-
-          <div className="header-right">
-
-            <button className="notification-button">
-
-              <FiBell />
-
-            </button>
-
-            <div className="partner-profile">
-
-              <div className="partner-avatar">
-
-                T
-
-              </div>
-
-              <div>
-
-                <h6 className="mb-0">
-                  Talabaty
-                </h6>
-
-                <small>Restaurant</small>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </header>
-
-        {/* Dynamic Page */}
-
-        <main className="dashboard-content">
-
-          <Outlet />
-
-        </main>
-
-      </div>
-
+      <main className="flex-grow-1 bg-surface px-4 px-md-5 py-4">{children}</main>
     </div>
   );
-};
-
-export default DashboardShell;
+}

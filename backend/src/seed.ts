@@ -6,6 +6,7 @@ import User from "./models/User";
 import PartnerProfile from "./models/PartnerProfile";
 import Product from "./models/Product";
 import Address from "./models/Address";
+import PaymentMethod from "./models/PaymentMethod";
 import mongoose from "mongoose";
 
 // Run with: npm run seed
@@ -19,6 +20,7 @@ async function seed() {
     PartnerProfile.deleteMany({}),
     Product.deleteMany({}),
     Address.deleteMany({}),
+    PaymentMethod.deleteMany({}),
   ]);
 
   const admin = await User.create({
@@ -52,6 +54,22 @@ async function seed() {
       label: "Work",
       fullAddress: "Chtaura Industrial Road, Office 12",
       town: "Chtaura",
+      isDefault: false,
+    },
+  ]);
+
+  await PaymentMethod.create([
+    {
+      customerId: customer._id,
+      type: "Cash",
+      label: "Cash on delivery",
+      isDefault: true,
+    },
+    {
+      customerId: customer._id,
+      type: "Whish",
+      label: "My Whish",
+      phoneNumber: "+961 70 111 222",
       isDefault: false,
     },
   ]);

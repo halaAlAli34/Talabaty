@@ -7,6 +7,16 @@ import { AuthRequest } from "../types/authRequest";
 export const register = async (req: Request, res: Response) => {
   const { name, email, password, role, phone, town } = req.body;
 
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "name, email, and password are required" });
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  }
+
   const existing = await User.findOne({ email });
   if (existing) {
     return res.status(400).json({ message: "Email already registered" });
@@ -76,15 +86,12 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     status: user.status,
     phone: user.phone,
     town: user.town,
-    preferredPaymentMethod: user.preferredPaymentMethod,
-    whishNumber: user.whishNumber,
   });
 };
 
-// PATCH /api/auth/me — Profile page "Save changes", also used by the
-// Payment Methods page to save the preferred payment method + Whish number.
+// PATCH /api/auth/me — Profile page "Save changes"
 export const updateMe = async (req: AuthRequest, res: Response) => {
-  const { name, phone, town, preferredPaymentMethod, whishNumber } = req.body;
+  const { name, phone, town } = req.body;
 
   const user = await User.findById(req.user!.id);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -92,8 +99,6 @@ export const updateMe = async (req: AuthRequest, res: Response) => {
   if (name !== undefined) user.name = name;
   if (phone !== undefined) user.phone = phone;
   if (town !== undefined) user.town = town;
-  if (preferredPaymentMethod !== undefined) user.preferredPaymentMethod = preferredPaymentMethod;
-  if (whishNumber !== undefined) user.whishNumber = whishNumber;
   await user.save();
 
   res.json({
@@ -104,8 +109,6 @@ export const updateMe = async (req: AuthRequest, res: Response) => {
     status: user.status,
     phone: user.phone,
     town: user.town,
-    preferredPaymentMethod: user.preferredPaymentMethod,
-    whishNumber: user.whishNumber,
   });
 };
 

@@ -4,14 +4,26 @@ import PublicNavbar from "../../components/layout/PublicNavbar";
 import api from "../../api/axiosInstance";
 import { useCart } from "../../context/CartContext";
 import { productPlaceholder } from "../../utils/image";
-import { Address } from "../../types";
+import { Address, PaymentMethod } from "../../types";
+
+// PaymentMethod.type ("Cash" | "Whish") is the customer-facing label saved
+// on the Payment Methods page; Order.paymentMethod ("COD" | "Whish Money")
+// is the value the orders API expects. This keeps that mapping in one place.
+function toOrderPaymentMethod(type: PaymentMethod["type"]): "COD" | "Whish Money" {
+  return type === "Whish" ? "Whish Money" : "COD";
+}
+
+function methodIcon(type: string): string {
+  return type === "Whish" ? "ti-wallet" : "ti-truck-delivery";
+}
 
 export default function CartCheckout() {
   const navigate = useNavigate();
   const { cart, loading, setQuantity, removeFromCart, refresh } = useCart();
-  const [payment, setPayment] = useState<"COD" | "Whish Money">("COD");
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string>("");
   const [placing, setPlacing] = useState(false);
 
   useEffect(() => {
@@ -20,8 +32,10 @@ export default function CartCheckout() {
       const defaultAddress = res.data.find((a) => a.isDefault) ?? res.data[0];
       if (defaultAddress) setSelectedAddressId(defaultAddress._id);
     });
-    api.get<{ preferredPaymentMethod?: "COD" | "Whish Money" }>("/auth/me").then((res) => {
-      if (res.data.preferredPaymentMethod) setPayment(res.data.preferredPaymentMethod);
+    api.get<PaymentMethod[]>("/payment-methods").then((res) => {
+      setMethods(res.data);
+      const defaultMethod = res.data.find((m) => m.isDefault) ?? res.data[0];
+      if (defaultMethod) setSelectedMethodId(defaultMethod._id);
     });
   }, []);
 
@@ -29,9 +43,15 @@ export default function CartCheckout() {
   const subtotal = items.reduce((sum, i) => sum + i.productId.price * i.quantity, 0);
 
   const placeOrder = async () => {
+    const method = methods.find((m) => m._id === selectedMethodId);
+    if (!method) return;
+
     setPlacing(true);
     try {
-      const { data } = await api.post("/orders", { paymentMethod: payment, addressId: selectedAddressId || undefined });
+      const { data } = await api.post("/orders", {
+        paymentMethod: toOrderPaymentMethod(method.type),
+        addressId: selectedAddressId || undefined,
+      });
       await refresh();
       navigate(`/order-confirmation/${data._id}`);
     } finally {
@@ -126,34 +146,38 @@ export default function CartCheckout() {
                 <span>Total</span><span>${subtotal.toFixed(2)}</span>
               </div>
 
-              <p className="mb-2 mt-4 small-caps fw-semibold text-slate-500" style={{ fontSize: ".75rem" }}>Payment method</p>
+              <div className="mb-2 d-flex align-items-center justify-content-between mt-4">
+                <span className="small-caps fw-semibold text-slate-500" style={{ fontSize: ".75rem" }}>Payment method</span>
+                <Link to="/payment-methods" className="text-brand-600 fw-medium text-decoration-none" style={{ fontSize: ".75rem" }}>
+                  + Add new
+                </Link>
+              </div>
+
+              {methods.length === 0 && (
+                <p className="rounded-3 bg-surface px-3 py-2 small text-slate-500 mb-0">
+                  No saved payment methods yet. <Link to="/payment-methods" className="text-brand-600 fw-semibold text-decoration-none">Add one</Link> before checking out.
+                </p>
+              )}
+
               <div className="row row-cols-2 g-2">
-                <div className="col">
-                  <button
-                    onClick={() => setPayment("COD")}
-                    className={`btn w-100 h-100 rounded-3 border border-2 p-2 text-start fw-semibold ${
-                      payment === "COD" ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-200 text-slate-500"
-                    }`}
-                    style={{ fontSize: ".75rem" }}
-                  >
-                    <i className="ti ti-truck-delivery d-block mb-1 fs-5" aria-hidden="true" />
-                    Cash
-                    <span className="d-block fw-normal text-slate-400">Pay when it arrives</span>
-                  </button>
-                </div>
-                <div className="col">
-                  <button
-                    onClick={() => setPayment("Whish Money")}
-                    className={`btn w-100 h-100 rounded-3 border border-2 p-2 text-start fw-semibold ${
-                      payment === "Whish Money" ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-200 text-slate-500"
-                    }`}
-                    style={{ fontSize: ".75rem" }}
-                  >
-                    <i className="ti ti-wallet d-block mb-1 fs-5" aria-hidden="true" />
-                    Whish
-                    <span className="d-block fw-normal text-slate-400">Pay via Whish wallet</span>
-                  </button>
-                </div>
+                {methods.map((m) => (
+                  <div className="col" key={m._id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMethodId(m._id)}
+                      className={`btn w-100 h-100 rounded-3 border border-2 p-2 text-start fw-semibold ${
+                        selectedMethodId === m._id ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-200 text-slate-500"
+                      }`}
+                      style={{ fontSize: ".75rem" }}
+                    >
+                      <i className={`ti ${methodIcon(m.type)} d-block mb-1 fs-5`} aria-hidden="true" />
+                      {m.label}
+                      <span className="d-block fw-normal text-slate-400">
+                        {m.type}{m.phoneNumber ? ` \u2014 ${m.phoneNumber}` : ""}
+                      </span>
+                    </button>
+                  </div>
+                ))}
               </div>
 
               <div className="mt-4">
@@ -198,7 +222,7 @@ export default function CartCheckout() {
 
               <button
                 onClick={placeOrder}
-                disabled={items.length === 0 || placing || !selectedAddressId}
+                disabled={items.length === 0 || placing || !selectedAddressId || !selectedMethodId}
                 className="btn btn-brand w-100 mt-4 py-2 fw-semibold"
               >
                 {placing ? "Placing order..." : "Place order \u2192"}

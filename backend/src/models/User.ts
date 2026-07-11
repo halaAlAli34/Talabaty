@@ -15,11 +15,6 @@ export interface IUser extends Document {
   // new collection, same reasoning as admin: no other role-specific data.
   phone?: string;
   town?: string;
-  // Customer's preferred checkout payment method + a Whish account
-  // reference, shown on the Payment Methods page and used to pre-select
-  // the option at checkout.
-  preferredPaymentMethod?: "COD" | "Whish Money";
-  whishNumber?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -42,8 +37,6 @@ const userSchema = new Schema<IUser>(
     },
     phone: { type: String },
     town: { type: String },
-    preferredPaymentMethod: { type: String, enum: ["COD", "Whish Money"] },
-    whishNumber: { type: String },
   },
   { timestamps: true }
 );

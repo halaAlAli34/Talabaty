@@ -1,50 +1,23 @@
-import { IconType } from "react-icons";
-
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  icon: IconType;
-  bgColor?: string;
+interface Props {
+  label: string;
+  value: string;
+  delta?: string;
+  deltaTone?: "up" | "down";
+  accent?: string;
 }
 
-const StatCard = ({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  bgColor = "#2F67F6",
-}: StatCardProps) => {
+export default function StatCard({ label, value, delta, deltaTone = "up", accent }: Props) {
   return (
-    <div className="stat-card card border-0 shadow-sm h-100">
-      <div className="card-body">
-
-        <div className="stat-card-top">
-
-          <div
-            className="stat-icon"
-            style={{ backgroundColor: bgColor }}
-          >
-            <Icon />
-          </div>
-
-        </div>
-
-        <div className="stat-card-content">
-
-          <h6>{title}</h6>
-
-          <h2>{value}</h2>
-
-          {subtitle && (
-            <p>{subtitle}</p>
-          )}
-
-        </div>
-
+    <div className="rounded-xl2 bg-white p-4 shadow-card h-100">
+      <p className="small text-slate-500 mb-1">{label}</p>
+      <div className="d-flex align-items-baseline gap-2">
+        <span className={`fs-3 fw-bold ${accent ?? "text-navy-900"}`}>{value}</span>
+        {delta && (
+          <span className={`small fw-medium ${deltaTone === "up" ? "text-teal-500" : "text-red-500"}`}>
+            <i className={`ti ${deltaTone === "up" ? "ti-arrow-up" : "ti-arrow-down"}`} aria-hidden="true" /> {delta}
+          </span>
+        )}
       </div>
     </div>
   );
-};
-
-export default StatCard;
+}

@@ -34,10 +34,20 @@ export const getMyProfile = async (req: AuthRequest, res: Response) => {
 
 // GET /api/partners — public storefront listing (only approved/active partners)
 export const listPartners = async (req: Request, res: Response) => {
-  const { category } = req.query;
+  const { category, search } = req.query;
   const activePartnerUserIds = await User.find({ role: "partner", status: "active" }).distinct("_id");
   const filter: Record<string, unknown> = { userId: { $in: activePartnerUserIds } };
   if (category) filter.category = category;
+  if (search) filter.storeName = { $regex: search as string, $options: "i" };
   const partners = await PartnerProfile.find(filter);
   res.json(partners);
+};
+
+// GET /api/partners/:id — a single store's public profile, used by the
+// store detail page instead of fetching every store and filtering client-side.
+export const getPartnerById = async (req: Request, res: Response) => {
+  const activePartnerUserIds = await User.find({ role: "partner", status: "active" }).distinct("_id");
+  const partner = await PartnerProfile.findOne({ _id: req.params.id, userId: { $in: activePartnerUserIds } });
+  if (!partner) return res.status(404).json({ message: "Store not found" });
+  res.json(partner);
 };

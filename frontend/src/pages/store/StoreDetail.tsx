@@ -14,12 +14,9 @@ export default function StoreDetail() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    api.get<PartnerProfile[]>("/partners").then((res) => {
-      setStore(res.data.find((p) => p._id === partnerId) ?? null);
-    });
-    api.get<Product[]>("/products").then((res) => {
-      setItems(res.data.filter((p) => p.partnerId === partnerId));
-    });
+    if (!partnerId) return;
+    api.get<PartnerProfile>(`/partners/${partnerId}`).then((res) => setStore(res.data)).catch(() => setStore(null));
+    api.get<Product[]>("/products", { params: { partnerId } }).then((res) => setItems(res.data));
   }, [partnerId]);
 
   const cartCount = cart?.items.reduce((sum, i) => sum + i.quantity, 0) ?? 0;

@@ -6,9 +6,18 @@ import Product from "../models/Product";
 import PartnerProfile from "../models/PartnerProfile";
 import Address from "../models/Address";
 
-// POST /api/orders — checkout: snapshot cart items into an order
+// POST /api/orders — checkout: snapshot cart items into an order.
+// A cart can hold items from several different stores at once (the
+// customer can browse and add from any store), so checkout splits it
+// into one Order per store rather than assuming a single partnerId —
+// otherwise items from every store but the last one added would silently
+// vanish from that store's own order list.
 export const createOrder = async (req: AuthRequest, res: Response) => {
   const { paymentMethod, addressId } = req.body;
+
+  if (!["COD", "Whish Money"].includes(paymentMethod)) {
+    return res.status(400).json({ message: "paymentMethod must be COD or Whish Money" });
+  }
 
   const cart = await Cart.findOne({ customerId: req.user!.id }).populate("items.productId");
   if (!cart || cart.items.length === 0) {
@@ -23,42 +32,66 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
     }
   }
 
-  const orderItems = [];
-  let totalAmount = 0;
-  let partnerId;
+  // Group cart line items by which store (partnerId) they belong to.
+  const itemsByPartner = new Map<string, { productId: any; title: string; price: number; quantity: number; imageUrl?: string }[]>();
 
   for (const item of cart.items) {
     const product = item.productId as any;
-    orderItems.push({
+    if (!product) continue; // product was deleted after being added to the cart
+
+    const partnerKey = product.partnerId.toString();
+    const bucket = itemsByPartner.get(partnerKey) ?? [];
+    bucket.push({
       productId: product._id,
       title: product.title,
       price: product.price,
       quantity: item.quantity,
       imageUrl: product.imageUrl,
     });
-    totalAmount += product.price * item.quantity;
-    partnerId = product.partnerId;
+    itemsByPartner.set(partnerKey, bucket);
   }
 
-  const order = await Order.create({
-    customerId: req.user!.id,
-    partnerId,
-    items: orderItems,
-    totalAmount,
-    paymentMethod,
-    deliveryAddress,
-  });
+  if (itemsByPartner.size === 0) {
+    return res.status(400).json({ message: "Cart items are no longer available" });
+  }
+
+  const orders = await Promise.all(
+    Array.from(itemsByPartner.entries()).map(([partnerId, items]) => {
+      const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      return Order.create({
+        customerId: req.user!.id,
+        partnerId,
+        items,
+        totalAmount,
+        paymentMethod,
+        deliveryAddress,
+      });
+    })
+  );
 
   cart.items = [];
   await cart.save();
 
-  res.status(201).json(order);
+  // Kept the response shape backward compatible: `orders` for the full
+  // split, plus the first order at the top level so any client only
+  // expecting a single order (e.g. redirecting to its confirmation page)
+  // still works without changes.
+  res.status(201).json({ ...orders[0].toObject(), orders });
 };
 
 // GET /api/orders/mine — customer's own order history
 export const getMyOrders = async (req: AuthRequest, res: Response) => {
   const orders = await Order.find({ customerId: req.user!.id }).sort({ createdAt: -1 });
   res.json(orders);
+};
+
+// GET /api/orders/:id — a single order, used by the order confirmation
+// page. Scoped to the logged-in customer so one customer can't view
+// another customer's order by guessing an id.
+export const getOrderById = async (req: AuthRequest, res: Response) => {
+  const order = await Order.findOne({ _id: req.params.id, customerId: req.user!.id });
+  if (!order) return res.status(404).json({ message: "Order not found" });
+  res.json(order);
 };
 
 // GET /api/orders/partner-mine — orders placed with the logged-in partner's store
